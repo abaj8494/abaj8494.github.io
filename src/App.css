@@ -51,10 +51,13 @@
 
 .ball {
   position: absolute;
-  transition: transform 0.1s ease-out;
+  will-change: transform;
+  transform-origin: center;
   cursor: pointer;
 }
 
 .ball img {
   pointer-events: none;
+  will-change: transform;
+  transform-origin: center;
 }

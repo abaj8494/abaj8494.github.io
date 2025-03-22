@@ -8,6 +8,8 @@ interface Ball {
   vx: number;
   vy: number;
   svg: string;
+  rotation: number;
+  rotationSpeed: number;
 }
 
 function App() {
@@ -15,16 +17,22 @@ function App() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const svgFiles = ['trade.svg', 'real_inferno.svg', 'imag_jet.svg', 'abs_hsv.svg'];
+  const BALL_SIZE = 250; // 5 times larger than original 50px
+  const BOUNCE_DAMPING = 0.8;
+  const REPULSION_DISTANCE = 300;
+  const REPULSION_FORCE = 1.5;
 
   useEffect(() => {
     // Initialize balls
     const initialBalls: Ball[] = svgFiles.map((svg, index) => ({
       id: index,
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      vx: 0,
-      vy: 0,
-      svg: svg
+      x: Math.random() * (window.innerWidth - BALL_SIZE),
+      y: Math.random() * (window.innerHeight - BALL_SIZE),
+      vx: (Math.random() - 0.5) * 4, // Initial random velocity
+      vy: (Math.random() - 0.5) * 4,
+      svg: svg,
+      rotation: Math.random() * 360,
+      rotationSpeed: (Math.random() - 0.5) * 5 // Random rotation speed
     }));
     setBalls(initialBalls);
 
@@ -45,31 +53,46 @@ function App() {
         const dy = ball.y - mousePos.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // If mouse is within 200 pixels, apply repulsion
-        if (distance < 200) {
-          const force = (200 - distance) / 200;
+        let newVx = ball.vx;
+        let newVy = ball.vy;
+
+        // If mouse is within repulsion distance, apply repulsion
+        if (distance < REPULSION_DISTANCE) {
+          const force = (REPULSION_DISTANCE - distance) / REPULSION_DISTANCE;
           const angle = Math.atan2(dy, dx);
-          const newVx = ball.vx + Math.cos(angle) * force * 0.5;
-          const newVy = ball.vy + Math.sin(angle) * force * 0.5;
-          
-          // Apply friction
-          const friction = 0.95;
-          return {
-            ...ball,
-            vx: newVx * friction,
-            vy: newVy * friction,
-            x: ball.x + newVx * friction,
-            y: ball.y + newVy * friction
-          };
+          newVx += Math.cos(angle) * force * REPULSION_FORCE;
+          newVy += Math.sin(angle) * force * REPULSION_FORCE;
         }
 
-        // Apply friction when not being repelled
+        // Apply friction
+        const friction = 0.98;
+        newVx *= friction;
+        newVy *= friction;
+
+        // Calculate new position
+        let newX = ball.x + newVx;
+        let newY = ball.y + newVy;
+
+        // Bounce off walls
+        if (newX < 0 || newX > window.innerWidth - BALL_SIZE) {
+          newVx *= -BOUNCE_DAMPING;
+          newX = newX < 0 ? 0 : window.innerWidth - BALL_SIZE;
+        }
+        if (newY < 0 || newY > window.innerHeight - BALL_SIZE) {
+          newVy *= -BOUNCE_DAMPING;
+          newY = newY < 0 ? 0 : window.innerHeight - BALL_SIZE;
+        }
+
+        // Update rotation
+        const newRotation = (ball.rotation + ball.rotationSpeed) % 360;
+
         return {
           ...ball,
-          vx: ball.vx * 0.95,
-          vy: ball.vy * 0.95,
-          x: ball.x + ball.vx * 0.95,
-          y: ball.y + ball.vy * 0.95
+          x: newX,
+          y: newY,
+          vx: newVx,
+          vy: newVy,
+          rotation: newRotation
         };
       }));
     };
@@ -87,10 +110,18 @@ function App() {
           style={{
             left: `${ball.x}px`,
             top: `${ball.y}px`,
-            transform: 'translate(-50%, -50%)'
+            transform: `translate(-50%, -50%) rotate(${ball.rotation}deg)`
           }}
         >
-          <img src={ball.svg} alt={`Ball ${ball.id}`} style={{ width: '50px', height: '50px' }} />
+          <img 
+            src={ball.svg} 
+            alt={`Ball ${ball.id}`} 
+            style={{ 
+              width: `${BALL_SIZE}px`, 
+              height: `${BALL_SIZE}px`,
+              transition: 'transform 0.1s ease-out'
+            }} 
+          />
         </div>
       ))}
     </div>
