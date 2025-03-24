@@ -34,7 +34,21 @@ function App() {
   const REPULSION_DISTANCE = 300;
   const REPULSION_FORCE = 1.5;
   const RANDOM_MOVEMENT_SPEED = 3.0;
-  const DIRECTION_CHANGE_INTERVAL = 1500;
+  const MAX_VELOCITY = 8.0; // Maximum velocity cap
+  const MAX_ROTATION_SPEED = 5.0; // Maximum rotation speed cap
+
+  // Function to cap velocity
+  const capVelocity = (vx: number, vy: number) => {
+    const speed = Math.sqrt(vx * vx + vy * vy);
+    if (speed > MAX_VELOCITY) {
+      const ratio = MAX_VELOCITY / speed;
+      return {
+        vx: vx * ratio,
+        vy: vy * ratio
+      };
+    }
+    return { vx, vy };
+  };
 
   // Function to resolve overlap between two balls with elastic collision physics
   const resolveOverlap = (ball1: Ball, ball2: Ball) => {
@@ -63,6 +77,10 @@ function App() {
         const newVx2 = ball2.vx + impulse * nx;
         const newVy2 = ball2.vy + impulse * ny;
 
+        // Cap velocities
+        const capped1 = capVelocity(newVx1, newVy1);
+        const capped2 = capVelocity(newVx2, newVy2);
+
         // Move balls apart to prevent sticking
         const overlap = (ballSize - distance) / 2;
         const moveX = nx * overlap;
@@ -71,24 +89,24 @@ function App() {
         // Calculate new rotation speeds based on collision
         const collisionAngle = Math.atan2(dy, dx);
         const relativeRotation = ball1.rotationSpeed - ball2.rotationSpeed;
-        const newRotationSpeed1 = ball1.rotationSpeed - relativeRotation * 0.5;
-        const newRotationSpeed2 = ball2.rotationSpeed + relativeRotation * 0.5;
+        const newRotationSpeed1 = Math.max(Math.min(ball1.rotationSpeed - relativeRotation * 0.5, MAX_ROTATION_SPEED), -MAX_ROTATION_SPEED);
+        const newRotationSpeed2 = Math.max(Math.min(ball2.rotationSpeed + relativeRotation * 0.5, MAX_ROTATION_SPEED), -MAX_ROTATION_SPEED);
 
         return {
           ball1: {
             ...ball1,
             x: ball1.x + moveX,
             y: ball1.y + moveY,
-            vx: newVx1 * BOUNCE_DAMPING,
-            vy: newVy1 * BOUNCE_DAMPING,
+            vx: capped1.vx * BOUNCE_DAMPING,
+            vy: capped1.vy * BOUNCE_DAMPING,
             rotationSpeed: newRotationSpeed1 * BOUNCE_DAMPING
           },
           ball2: {
             ...ball2,
             x: ball2.x - moveX,
             y: ball2.y - moveY,
-            vx: newVx2 * BOUNCE_DAMPING,
-            vy: newVy2 * BOUNCE_DAMPING,
+            vx: capped2.vx * BOUNCE_DAMPING,
+            vy: capped2.vy * BOUNCE_DAMPING,
             rotationSpeed: newRotationSpeed2 * BOUNCE_DAMPING
           }
         };
@@ -125,7 +143,7 @@ function App() {
       url: svgFile.url,
       rotation: Math.random() * 360,
       rotationSpeed: (Math.random() - 0.5) * 8,
-      nextDirectionChange: Date.now() + Math.random() * DIRECTION_CHANGE_INTERVAL
+      nextDirectionChange: 0 // We won't use this anymore
     }));
     setBalls(initialBalls);
 
@@ -149,16 +167,6 @@ function App() {
           let newVx = ball.vx;
           let newVy = ball.vy;
 
-          // Independent movement - always active
-          if (currentTime > ball.nextDirectionChange) {
-            // Set new random direction
-            const angle = Math.random() * Math.PI * 2;
-            const speed = RANDOM_MOVEMENT_SPEED * (0.8 + Math.random() * 0.4);
-            newVx = Math.cos(angle) * speed;
-            newVy = Math.sin(angle) * speed;
-            ball.nextDirectionChange = currentTime + Math.random() * DIRECTION_CHANGE_INTERVAL;
-          }
-
           // Mouse repulsion - additional force
           const dx = ball.x - mousePosRef.current.x;
           const dy = ball.y - mousePosRef.current.y;
@@ -175,6 +183,11 @@ function App() {
           const friction = 0.99;
           newVx *= friction;
           newVy *= friction;
+
+          // Cap velocity
+          const capped = capVelocity(newVx, newVy);
+          newVx = capped.vx;
+          newVy = capped.vy;
 
           // Calculate new position
           let newX = ball.x + newVx;
