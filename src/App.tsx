@@ -11,6 +11,7 @@ interface Ball {
   rotation: number;
   rotationSpeed: number;
   nextDirectionChange: number;
+  url: string;
 }
 
 function App() {
@@ -18,8 +19,17 @@ function App() {
   const mousePosRef = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>();
-  const svgFiles = ['trade.svg', 'real_inferno.svg', 'imag_jet.svg', 'abs_hsv.svg'];
-  const BALL_SIZE = 250;
+  const svgFiles = [
+    { svg: 'trade.svg', url: 'https://trade.abaj.ai' },
+    { svg: 'real_inferno.svg', url: 'https://bots.abaj.ai' },
+    { svg: 'imag_jet.svg', url: 'https://arcade.abaj.ai' },
+    { svg: 'abs_hsv.svg', url: 'https://abaj.ai' },
+    { svg: 'tools.svg', url: 'https://tools.abaj.ai' }
+  ];
+  const MIN_BALL_SIZE = 100; // Minimum size in pixels
+  const MAX_BALL_SIZE = 250; // Maximum size in pixels
+  const BALL_SIZE_VW = 15; // Size in viewport width percentage
+  const [ballSize, setBallSize] = useState(250);
   const BOUNCE_DAMPING = 0.8;
   const REPULSION_DISTANCE = 300;
   const REPULSION_FORCE = 1.5;
@@ -32,7 +42,7 @@ function App() {
     const dy = ball1.y - ball2.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
-    if (distance < BALL_SIZE) {
+    if (distance < ballSize) {
       // Calculate collision normal
       const nx = dx / distance;
       const ny = dy / distance;
@@ -54,7 +64,7 @@ function App() {
         const newVy2 = ball2.vy + impulse * ny;
 
         // Move balls apart to prevent sticking
-        const overlap = (BALL_SIZE - distance) / 2;
+        const overlap = (ballSize - distance) / 2;
         const moveX = nx * overlap;
         const moveY = ny * overlap;
 
@@ -87,15 +97,32 @@ function App() {
     return { ball1, ball2 };
   };
 
+  // Add new useEffect for handling window resize
+  useEffect(() => {
+    const updateBallSize = () => {
+      const vwSize = (window.innerWidth * BALL_SIZE_VW) / 100;
+      const newSize = Math.min(Math.max(vwSize, MIN_BALL_SIZE), MAX_BALL_SIZE);
+      setBallSize(newSize);
+    };
+
+    // Initial calculation
+    updateBallSize();
+
+    // Add resize listener
+    window.addEventListener('resize', updateBallSize);
+    return () => window.removeEventListener('resize', updateBallSize);
+  }, []);
+
   useEffect(() => {
     // Initialize balls
-    const initialBalls: Ball[] = svgFiles.map((svg, index) => ({
+    const initialBalls: Ball[] = svgFiles.map((svgFile, index) => ({
       id: index,
-      x: Math.random() * (window.innerWidth - BALL_SIZE),
-      y: Math.random() * (window.innerHeight - BALL_SIZE),
+      x: Math.random() * (window.innerWidth - ballSize),
+      y: Math.random() * (window.innerHeight - ballSize),
       vx: (Math.random() - 0.5) * RANDOM_MOVEMENT_SPEED * 2,
       vy: (Math.random() - 0.5) * RANDOM_MOVEMENT_SPEED * 2,
-      svg: svg,
+      svg: svgFile.svg,
+      url: svgFile.url,
       rotation: Math.random() * 360,
       rotationSpeed: (Math.random() - 0.5) * 8,
       nextDirectionChange: Date.now() + Math.random() * DIRECTION_CHANGE_INTERVAL
@@ -154,15 +181,15 @@ function App() {
           let newY = ball.y + newVy;
 
           // Bounce off walls
-          if (newX < 0 || newX > window.innerWidth - BALL_SIZE) {
+          if (newX < 0 || newX > window.innerWidth - ballSize) {
             newVx *= -BOUNCE_DAMPING;
-            newX = newX < 0 ? 0 : window.innerWidth - BALL_SIZE;
+            newX = newX < 0 ? 0 : window.innerWidth - ballSize;
             // Reverse rotation on wall collision
             ball.rotationSpeed *= -BOUNCE_DAMPING;
           }
-          if (newY < 0 || newY > window.innerHeight - BALL_SIZE) {
+          if (newY < 0 || newY > window.innerHeight - ballSize) {
             newVy *= -BOUNCE_DAMPING;
-            newY = newY < 0 ? 0 : window.innerHeight - BALL_SIZE;
+            newY = newY < 0 ? 0 : window.innerHeight - ballSize;
             // Reverse rotation on wall collision
             ball.rotationSpeed *= -BOUNCE_DAMPING;
           }
@@ -210,9 +237,12 @@ function App() {
   return (
     <div ref={containerRef} className="container">
       {balls.map(ball => (
-        <div
+        <a
           key={ball.id}
-          className="ball"
+          href={ball.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ball-link"
           style={{
             left: `${ball.x}px`,
             top: `${ball.y}px`,
@@ -223,12 +253,12 @@ function App() {
             src={ball.svg} 
             alt={`Ball ${ball.id}`} 
             style={{ 
-              width: `${BALL_SIZE}px`, 
-              height: `${BALL_SIZE}px`,
+              width: `${ballSize}px`, 
+              height: `${ballSize}px`,
               transition: 'transform 0.1s ease-out'
             }} 
           />
-        </div>
+        </a>
       ))}
     </div>
   );

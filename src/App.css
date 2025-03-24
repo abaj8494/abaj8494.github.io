@@ -64,3 +64,24 @@
   will-change: transform;
   transform-origin: center;
 }
+
+.ball-link {
+  position: absolute;
+  will-change: transform;
+  transform-origin: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease-out;
+}
+
+.ball-link:hover {
+  transform: translate(-50%, -50%) rotate(var(--rotation)) scale(1.1);
+  z-index: 10;
+}
+
+.ball-link img {
+  pointer-events: none;
+  will-change: transform;
+  transform-origin: center;
+  transition: transform 0.1s ease-out;
+}
