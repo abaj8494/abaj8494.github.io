@@ -20,6 +20,7 @@ function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>();
   const svgFiles = [
+    { svg: 'ledger.svg', url: 'https://ledger.abaj.ai' },
     { svg: 'trade.svg', url: 'https://trade.abaj.ai' },
     { svg: 'real_inferno.svg', url: 'https://bots.abaj.ai' },
     { svg: 'imag_jet.svg', url: 'https://arcade.abaj.ai' },
