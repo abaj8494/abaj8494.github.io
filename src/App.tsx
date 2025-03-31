@@ -87,11 +87,11 @@ function App() {
         const moveX = nx * overlap;
         const moveY = ny * overlap;
 
-        // Calculate new rotation speeds based on collision
-        const collisionAngle = Math.atan2(dy, dx);
-        const relativeRotation = ball1.rotationSpeed - ball2.rotationSpeed;
-        const newRotationSpeed1 = Math.max(Math.min(ball1.rotationSpeed - relativeRotation * 0.5, MAX_ROTATION_SPEED), -MAX_ROTATION_SPEED);
-        const newRotationSpeed2 = Math.max(Math.min(ball2.rotationSpeed + relativeRotation * 0.5, MAX_ROTATION_SPEED), -MAX_ROTATION_SPEED);
+        // Update rotation speeds during collision - simplified to just swap speeds
+        // This prevents random rotational speed changes when idle
+        const tempRotationSpeed = ball1.rotationSpeed;
+        const newRotationSpeed1 = ball2.rotationSpeed * BOUNCE_DAMPING;
+        const newRotationSpeed2 = tempRotationSpeed * BOUNCE_DAMPING;
 
         return {
           ball1: {
@@ -100,7 +100,7 @@ function App() {
             y: ball1.y + moveY,
             vx: capped1.vx * BOUNCE_DAMPING,
             vy: capped1.vy * BOUNCE_DAMPING,
-            rotationSpeed: newRotationSpeed1 * BOUNCE_DAMPING
+            rotationSpeed: newRotationSpeed1
           },
           ball2: {
             ...ball2,
@@ -108,7 +108,7 @@ function App() {
             y: ball2.y - moveY,
             vx: capped2.vx * BOUNCE_DAMPING,
             vy: capped2.vy * BOUNCE_DAMPING,
-            rotationSpeed: newRotationSpeed2 * BOUNCE_DAMPING
+            rotationSpeed: newRotationSpeed2
           }
         };
       }
@@ -143,7 +143,7 @@ function App() {
       svg: svgFile.svg,
       url: svgFile.url,
       rotation: Math.random() * 360,
-      rotationSpeed: (Math.random() - 0.5) * 8,
+      rotationSpeed: (Math.random() - 0.5) * 4,
       nextDirectionChange: 0 // We won't use this anymore
     }));
     setBalls(initialBalls);
@@ -167,6 +167,8 @@ function App() {
         updatedBalls = updatedBalls.map(ball => {
           let newVx = ball.vx;
           let newVy = ball.vy;
+          // Keep rotation speed unchanged unless there's a collision
+          let newRotationSpeed = ball.rotationSpeed;
 
           // Mouse repulsion - additional force
           const dx = ball.x - mousePosRef.current.x;
@@ -194,22 +196,25 @@ function App() {
           let newX = ball.x + newVx;
           let newY = ball.y + newVy;
 
-          // Bounce off walls
+          // Bounce off walls and only change rotation speed on wall collision
+          let wallCollision = false;
           if (newX < 0 || newX > window.innerWidth - ballSize) {
             newVx *= -BOUNCE_DAMPING;
             newX = newX < 0 ? 0 : window.innerWidth - ballSize;
             // Reverse rotation on wall collision
-            ball.rotationSpeed *= -BOUNCE_DAMPING;
+            newRotationSpeed *= -BOUNCE_DAMPING;
+            wallCollision = true;
           }
           if (newY < 0 || newY > window.innerHeight - ballSize) {
             newVy *= -BOUNCE_DAMPING;
             newY = newY < 0 ? 0 : window.innerHeight - ballSize;
             // Reverse rotation on wall collision
-            ball.rotationSpeed *= -BOUNCE_DAMPING;
+            newRotationSpeed *= -BOUNCE_DAMPING;
+            wallCollision = true;
           }
 
-          // Update rotation
-          const newRotation = (ball.rotation + ball.rotationSpeed) % 360;
+          // Update rotation - only apply rotation speed, no random changes
+          const newRotation = (ball.rotation + newRotationSpeed) % 360;
 
           return {
             ...ball,
@@ -217,7 +222,8 @@ function App() {
             y: newY,
             vx: newVx,
             vy: newVy,
-            rotation: newRotation
+            rotation: newRotation,
+            rotationSpeed: newRotationSpeed
           };
         });
 
